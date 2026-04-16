@@ -1,0 +1,33 @@
+[package]
+name = "pipe-agent-storage"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal Pipe agent storage SDK for Rust"
+license = "MIT"
+readme = "README.md"
+keywords = ["pipe", "storage", "agents", "sdk"]
+repository = "https://github.com/pipe-network/lib-storage"
+homepage = "https://github.com/pipe-network/lib-storage"
+documentation = "https://github.com/pipe-network/lib-storage/tree/main/rust#readme"
+
+[lib]
+name = "pipe_agent_storage"
+path = "src/lib.rs"
+
+[dependencies]
+base64 = "0.22"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+urlencoding = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "io-util", "net"] }
+serde_json = "1"
+blake3 = "1"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+futures = "0.3"

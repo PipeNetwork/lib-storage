@@ -1,0 +1,46 @@
+{
+  "name": "@pipe-network/agent-storage",
+  "version": "0.1.0",
+  "description": "Minimal Pipe agent storage SDK for TypeScript",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test:integration": "npm run build && node tests/integration.mjs",
+    "bench:agent": "npm run build && node ../bench/agent_workload.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "pipe",
+    "storage",
+    "agents",
+    "sdk"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pipe-network/lib-storage.git",
+    "directory": "typescript"
+  },
+  "homepage": "https://github.com/pipe-network/lib-storage/tree/main/typescript#readme",
+  "bugs": {
+    "url": "https://github.com/pipe-network/lib-storage/issues"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pipe-agent-storage"
+version = "0.1.0"
+description = "Minimal Pipe agent storage SDK for Python"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Pipe Network" }]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["pipe", "storage", "agents", "sdk"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Libraries",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/pipe-network/lib-storage"
+Repository = "https://github.com/pipe-network/lib-storage"
+Documentation = "https://github.com/pipe-network/lib-storage/tree/main/python#readme"
+Issues = "https://github.com/pipe-network/lib-storage/issues"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

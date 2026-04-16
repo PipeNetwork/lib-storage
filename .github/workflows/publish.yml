@@ -1,0 +1,130 @@
+name: Publish SDKs
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "SDK version (x.y.z). Must match all package manifests."
+        required: true
+        type: string
+      publish_typescript:
+        description: "Publish TypeScript package"
+        required: true
+        default: true
+        type: boolean
+      publish_python:
+        description: "Publish Python package"
+        required: true
+        default: true
+        type: boolean
+      publish_rust:
+        description: "Publish Rust crate"
+        required: true
+        default: true
+        type: boolean
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+env:
+  DEFAULT_TYPESCRIPT: "true"
+  DEFAULT_PYTHON: "true"
+  DEFAULT_RUST: "true"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.out.outputs.version }}
+      publish_typescript: ${{ steps.out.outputs.publish_typescript }}
+      publish_python: ${{ steps.out.outputs.publish_python }}
+      publish_rust: ${{ steps.out.outputs.publish_rust }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - id: out
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+            PUBLISH_TS="${{ inputs.publish_typescript }}"
+            PUBLISH_PY="${{ inputs.publish_python }}"
+            PUBLISH_RS="${{ inputs.publish_rust }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+            PUBLISH_TS="${DEFAULT_TYPESCRIPT}"
+            PUBLISH_PY="${DEFAULT_PYTHON}"
+            PUBLISH_RS="${DEFAULT_RUST}"
+          fi
+
+          python scripts/check_versions.py --expected "${VERSION}"
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "publish_typescript=${PUBLISH_TS}" >> "$GITHUB_OUTPUT"
+          echo "publish_python=${PUBLISH_PY}" >> "$GITHUB_OUTPUT"
+          echo "publish_rust=${PUBLISH_RS}" >> "$GITHUB_OUTPUT"
+
+  publish-typescript:
+    runs-on: ubuntu-latest
+    needs: verify
+    if: needs.verify.outputs.publish_typescript == 'true'
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: typescript/package-lock.json
+          registry-url: "https://registry.npmjs.org"
+      - name: Build package
+        run: |
+          npm ci
+          npm run build
+      - name: Publish npm package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+  publish-python:
+    runs-on: ubuntu-latest
+    needs: verify
+    if: needs.verify.outputs.publish_python == 'true'
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build package
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: python -m twine upload dist/*
+
+  publish-rust:
+    runs-on: ubuntu-latest
+    needs: verify
+    if: needs.verify.outputs.publish_rust == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Package checks
+        run: cargo package --manifest-path rust/Cargo.toml
+      - name: Publish crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --manifest-path rust/Cargo.toml
