@@ -2,7 +2,7 @@
 
 Multi-language SDKs for Pipe Storage with Solana wallet authentication.
 
-- `typescript/` — TypeScript SDK (`PipeStorageClient`)
+- `typescript/` — TypeScript SDK (`PipeStorageClient`, package name `@pipe-network/agent-storage`)
 - `python/` — Python SDK (`PipeStorage`)
 - `rust/` — Rust SDK (`PipeStorage`)
 

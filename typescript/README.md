@@ -8,6 +8,12 @@ TypeScript SDK for Pipe Storage with Solana wallet authentication. Works in Node
 npm install ./typescript
 ```
 
+Current TypeScript package/import name:
+
+- `@pipe-network/agent-storage`
+
+All examples below use that package name intentionally.
+
 ## Auth (Sign In With Solana)
 
 ```ts
