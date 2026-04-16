@@ -41,9 +41,33 @@ After `auth_verify`, the access token is automatically used for all subsequent c
 
 | Variable | Purpose |
 |---|---|
-| `PIPE_API_KEY` | API key or JWT access token |
+| `PIPE_API_KEY` | `user_app_key` or JWT access token |
 | `PIPE_ACCOUNT` | Account ID for deterministic URL generation |
 | `PIPE_BASE_URL` | Override base URL (default: `https://us-west-01-firestarter.pipenetwork.com`) |
+
+## Credential bootstrap
+
+The SDKs support SIWS auth methods, but the shipped quickstarts and example
+programs are **runtime usage examples**, not account-provisioning flows.
+
+In practice, that means:
+
+- the current examples assume you already have a Pipe account
+- they assume you already have `PIPE_API_KEY`
+- they assume you already know `PIPE_ACCOUNT`
+- they do **not** create a user or fetch `user_app_key` for you
+
+For headless agents, the recommended setup is:
+
+1. provision the account separately
+2. obtain the account `user_app_key`
+3. set `PIPE_API_KEY` and `PIPE_ACCOUNT`
+4. run the examples in API-key mode
+
+If you want to bootstrap credentials programmatically, use the SIWS methods
+(`auth_challenge`, `auth_verify`) and then fetch/store the resulting credentials
+in your own provisioning flow. Do not assume the example programs will do this
+for you.
 
 ## Default Host Behavior
 
@@ -53,7 +77,12 @@ For staging/local environments, set `PIPE_BASE_URL` (or pass SDK-specific base U
 
 ## Quickstarts
 
+These quickstarts require a pre-existing `PIPE_API_KEY` and `PIPE_ACCOUNT`.
+
 ```bash
+export PIPE_API_KEY="<user_app_key_or_token>"
+export PIPE_ACCOUNT="<account>"
+
 # TypeScript
 cd typescript && npm install && npm run build && cd ..
 node ./quickstart/typescript_agent.mjs
