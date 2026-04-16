@@ -11,18 +11,38 @@ pip install ./python
 ## Auth (Sign In With Solana)
 
 ```python
+import base64
+import json
+import os
+
+from solders.keypair import Keypair
+
 from pipe_storage import PipeStorage
 
-pipe = PipeStorage()
+base_url = os.getenv(
+    "PIPE_BASE_URL",
+    "https://us-west-01-firestarter.pipenetwork.com",
+)
+pipe = PipeStorage(base_url=base_url)
+
+# Example: load an existing Solana CLI-style keypair file.
+keypair = Keypair.from_bytes(bytes(json.load(open("keypair.json"))))
+wallet_public_key = str(keypair.pubkey())
 
 # 1. Get challenge
-challenge = pipe.auth_challenge("Base58WalletPubkey...")
+challenge = pipe.auth_challenge(wallet_public_key)
 
-# 2. Sign challenge.message with your Solana wallet (external)
-signature_b64 = sign_with_wallet(challenge.message)
+# 2. Sign challenge.message with the wallet
+signature = keypair.sign_message(challenge.message.encode("utf-8"))
+signature_b64 = base64.b64encode(bytes(signature)).decode("utf-8")
 
 # 3. Verify — auto-sets credentials for all subsequent calls
-session = pipe.auth_verify("Base58WalletPubkey...", challenge.nonce, challenge.message, signature_b64)
+session = pipe.auth_verify(
+    wallet_public_key,
+    challenge.nonce,
+    challenge.message,
+    signature_b64,
+)
 
 # 4. Refresh when token expires (also auto-refreshes on 401)
 pipe.auth_refresh()
@@ -92,16 +112,25 @@ If you want to start from a Solana wallet and then optionally switch to
 API-key mode later, the pattern is:
 
 ```python
+import base64
+import json
 import os
-import requests
 
+import requests
+from solders.keypair import Keypair
 from pipe_storage import PipeStorage
 
-pipe = PipeStorage(base_url=os.environ["PIPE_BASE_URL"])
+base_url = os.getenv(
+    "PIPE_BASE_URL",
+    "https://us-west-01-firestarter.pipenetwork.com",
+)
+pipe = PipeStorage(base_url=base_url)
 
-wallet_public_key = "Base58WalletPubkey..."
+keypair = Keypair.from_bytes(bytes(json.load(open("keypair.json"))))
+wallet_public_key = str(keypair.pubkey())
 challenge = pipe.auth_challenge(wallet_public_key)
-signature_b64 = sign_with_wallet(challenge.message)
+signature = keypair.sign_message(challenge.message.encode("utf-8"))
+signature_b64 = base64.b64encode(bytes(signature)).decode("utf-8")
 session = pipe.auth_verify(
     wallet_public_key,
     challenge.nonce,
@@ -111,7 +140,7 @@ session = pipe.auth_verify(
 
 # Optional: fetch the long-lived user_app_key only if you want API-key mode later.
 me = requests.get(
-    f"{os.environ['PIPE_BASE_URL']}/user/me",
+    f"{base_url}/user/me",
     headers={"Authorization": f"Bearer {session.access_token}"},
 ).json()
 
@@ -132,12 +161,7 @@ The SDK does not broadcast the Solana transaction itself. You supply a `pay`
 callback that returns the Solana transaction signature.
 
 ```python
-import os
-
-from pipe_storage import PipeStorage
-
-pipe = PipeStorage()
-
+# Reuse the authenticated `pipe` client from the SIWS example above.
 result = pipe.top_up_credits_x402(
     1_000_000,
     pay=lambda payment: send_usdc_transfer(
@@ -163,14 +187,7 @@ Low-level methods are also available if you want to control the loop yourself:
 ## Storage
 
 ```python
-from pipe_storage import PipeStorage
-
-pipe = PipeStorage(
-    api_key=os.environ["PIPE_API_KEY"],
-    account=os.environ["PIPE_ACCOUNT"],
-    auth_scheme="api_key",
-)
-
+# Reuse the authenticated `pipe` client from the SIWS example above.
 stored = pipe.store({"hello": "world"}, file_name="agent/state.json")
 pinned = pipe.pin({"operation_id": stored["operation_id"]})
 content = pipe.fetch(pinned["url"], as_json=True)

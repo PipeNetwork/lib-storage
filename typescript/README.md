@@ -11,18 +11,36 @@ npm install ./typescript
 ## Auth (Sign In With Solana)
 
 ```ts
-import { PipeStorageClient } from "@pipe-network/agent-storage";
+import fs from "node:fs";
 
-const pipe = new PipeStorageClient();
+import { Keypair } from "@solana/web3.js";
+import { PipeStorageClient } from "@pipe-network/agent-storage";
+import nacl from "tweetnacl";
+
+const baseUrl = process.env.PIPE_BASE_URL ?? "https://us-west-01-firestarter.pipenetwork.com";
+const pipe = new PipeStorageClient({ baseUrl });
+
+// Example: load an existing Solana CLI-style keypair file.
+const keypair = Keypair.fromSecretKey(
+  Uint8Array.from(JSON.parse(fs.readFileSync("keypair.json", "utf8"))),
+);
+const walletPublicKey = keypair.publicKey.toBase58();
 
 // 1. Get challenge
-const challenge = await pipe.authChallenge("Base58WalletPubkey...");
+const challenge = await pipe.authChallenge(walletPublicKey);
 
-// 2. Sign challenge.message with your Solana wallet (external)
-const signatureB64 = await signWithWallet(challenge.message);
+// 2. Sign challenge.message with the wallet
+const messageBytes = new TextEncoder().encode(challenge.message);
+const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
+const signatureB64 = Buffer.from(signature).toString("base64");
 
 // 3. Verify — auto-sets credentials for all subsequent calls
-const session = await pipe.authVerify("Base58WalletPubkey...", challenge.nonce, challenge.message, signatureB64);
+const session = await pipe.authVerify(
+  walletPublicKey,
+  challenge.nonce,
+  challenge.message,
+  signatureB64,
+);
 
 // 4. Refresh when token expires (also auto-refreshes on 401)
 await pipe.authRefresh();
@@ -92,13 +110,23 @@ If you want to start from a Solana wallet and then optionally switch to
 API-key mode later, the pattern is:
 
 ```ts
-const pipe = new PipeStorageClient({
-  baseUrl: process.env.PIPE_BASE_URL,
-});
+import fs from "node:fs";
 
-const walletPublicKey = "Base58WalletPubkey...";
+import { Keypair } from "@solana/web3.js";
+import { PipeStorageClient } from "@pipe-network/agent-storage";
+import nacl from "tweetnacl";
+
+const baseUrl = process.env.PIPE_BASE_URL ?? "https://us-west-01-firestarter.pipenetwork.com";
+const pipe = new PipeStorageClient({ baseUrl });
+
+const keypair = Keypair.fromSecretKey(
+  Uint8Array.from(JSON.parse(fs.readFileSync("keypair.json", "utf8"))),
+);
+const walletPublicKey = keypair.publicKey.toBase58();
 const challenge = await pipe.authChallenge(walletPublicKey);
-const signatureB64 = await signWithWallet(challenge.message);
+const messageBytes = new TextEncoder().encode(challenge.message);
+const signature = nacl.sign.detached(messageBytes, keypair.secretKey);
+const signatureB64 = Buffer.from(signature).toString("base64");
 const session = await pipe.authVerify(
   walletPublicKey,
   challenge.nonce,
@@ -107,7 +135,7 @@ const session = await pipe.authVerify(
 );
 
 // Optional: fetch the long-lived user_app_key only if you want API-key mode later.
-const me = await fetch(`${process.env.PIPE_BASE_URL}/user/me`, {
+const me = await fetch(`${baseUrl}/user/me`, {
   headers: { Authorization: `Bearer ${session.accessToken}` },
 }).then((r) => r.json());
 
@@ -128,10 +156,7 @@ The SDK does not send the on-chain payment itself. You provide a `pay`
 callback that returns the Solana transaction signature.
 
 ```ts
-import { PipeStorageClient } from "@pipe-network/agent-storage";
-
-const pipe = new PipeStorageClient();
-
+// Reuse the authenticated `pipe` client from the SIWS example above.
 const result = await pipe.topUpCreditsX402(1_000_000, {
   async pay(payment) {
     const txSig = await sendUsdcTransfer({
@@ -159,14 +184,7 @@ Low-level methods are also available if you want to manage the loop yourself:
 ## Storage
 
 ```ts
-import { PipeStorageClient } from "@pipe-network/agent-storage";
-
-const pipe = new PipeStorageClient({
-  apiKey: process.env.PIPE_API_KEY,
-  account: process.env.PIPE_ACCOUNT,
-  authScheme: "apiKey",
-});
-
+// Reuse the authenticated `pipe` client from the SIWS example above.
 const stored = await pipe.store({ hello: "world" }, { fileName: "agent/state.json" });
 const pinned = await pipe.pin({ operationId: stored.operationId });
 const data = await pipe.fetch(pinned.url, { asJson: true });
