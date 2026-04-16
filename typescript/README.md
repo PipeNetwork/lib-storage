@@ -136,7 +136,7 @@ const session = await pipe.authVerify(
 
 // Optional: fetch the long-lived user_app_key only if you want API-key mode later.
 const me = await fetch(`${baseUrl}/user/me`, {
-  headers: { Authorization: `Bearer ${session.accessToken}` },
+  headers: { Authorization: `Bearer ${session.access_token}` },
 }).then((r) => r.json());
 
 console.log("user_app_key =", me.user_app_key);
