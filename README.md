@@ -45,6 +45,18 @@ After `auth_verify`, the access token is automatically used for all subsequent c
 | `PIPE_ACCOUNT` | Account ID for deterministic URL generation |
 | `PIPE_BASE_URL` | Override base URL (default: `https://us-west-01-firestarter.pipenetwork.com`) |
 
+## Two auth modes
+
+There are two valid ways to use these SDKs:
+
+1. SIWS mode (preferred / expected)
+   - use SIWS (`auth_challenge` -> sign -> `auth_verify`)
+   - use the authenticated bearer session immediately
+2. Provisioned API-key mode (optional compatibility mode)
+   - you already have a Pipe `user_app_key`
+   - you already know the `PIPE_ACCOUNT` value to use
+   - examples and quickstarts mostly assume this mode for simplicity
+
 ## Credential bootstrap
 
 The SDKs support SIWS auth methods, but the shipped quickstarts and example
@@ -57,17 +69,21 @@ In practice, that means:
 - they assume you already know `PIPE_ACCOUNT`
 - they do **not** create a user or fetch `user_app_key` for you
 
-For headless agents, the recommended setup is:
+The recommended setup is:
 
-1. provision the account separately
-2. obtain the account `user_app_key`
-3. set `PIPE_API_KEY` and `PIPE_ACCOUNT`
-4. run the examples in API-key mode
+1. start with SIWS
+2. use the authenticated bearer session directly
+3. only switch to `PIPE_API_KEY` mode if your environment explicitly wants that operational model
 
-If you want to bootstrap credentials programmatically, use the SIWS methods
-(`auth_challenge`, `auth_verify`) and then fetch/store the resulting credentials
-in your own provisioning flow. Do not assume the example programs will do this
-for you.
+If you want to bootstrap credentials programmatically:
+
+1. call `auth_challenge`
+2. sign the returned message with the wallet
+3. call `auth_verify`
+4. use the returned bearer session immediately
+5. optionally call `/user/me` and persist `user_app_key` for future API-key-mode runs
+
+Do not assume the example programs will do this for you.
 
 ## Default Host Behavior
 
@@ -77,7 +93,8 @@ For staging/local environments, set `PIPE_BASE_URL` (or pass SDK-specific base U
 
 ## Quickstarts
 
-These quickstarts require a pre-existing `PIPE_API_KEY` and `PIPE_ACCOUNT`.
+These quickstarts currently require a pre-existing `PIPE_API_KEY` and `PIPE_ACCOUNT`.
+That is for convenience only; it is not the primary recommended auth path.
 
 ```bash
 export PIPE_API_KEY="<user_app_key_or_token>"

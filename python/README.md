@@ -31,6 +31,11 @@ pipe.auth_refresh()
 pipe.auth_logout()
 ```
 
+This is the **recommended auth path**.
+
+After `auth_verify(...)`, the same `PipeStorage` instance can immediately make
+authenticated bearer-session calls.
+
 Default behavior: `PipeStorage()` uses
 `https://us-west-01-firestarter.pipenetwork.com` (production). Requests are real
 and may incur usage cost.
@@ -41,14 +46,14 @@ Use a non-production host when needed:
 export PIPE_BASE_URL="http://localhost:8080"
 ```
 
-Or use a static API key:
+Optional: use a static API key:
 
 ```bash
-export PIPE_API_KEY="<your_jwt_or_api_token>"
+export PIPE_API_KEY="<user_app_key_or_bearer_token>"
 export PIPE_ACCOUNT="<user_id_or_public_slug>"
 ```
 
-If you are using a long-lived `user_app_key` for headless agents, construct the
+If your environment intentionally provisions a long-lived `user_app_key`, construct the
 client in API-key mode so it sends `Authorization: ApiKey ...` instead of the
 default bearer header:
 
@@ -58,6 +63,59 @@ pipe = PipeStorage(
     account=os.environ["PIPE_ACCOUNT"],
     auth_scheme="api_key",
 )
+```
+
+Use this only when you explicitly want provisioned API-key mode.
+
+## What the current examples assume
+
+The shipped quickstarts and examples are runtime examples, not provisioning
+examples.
+
+They assume:
+
+- you already have a Pipe account
+- you already have `PIPE_API_KEY`
+- you already know `PIPE_ACCOUNT`
+
+They do **not**:
+
+- create an account
+- run SIWS and then export `user_app_key`
+- write a `.env` file for you
+
+If you need to bootstrap credentials first, use the SIWS methods above.
+
+## Bootstrap to API-key mode with SIWS
+
+If you want to start from a Solana wallet and then optionally switch to
+API-key mode later, the pattern is:
+
+```python
+import os
+import requests
+
+from pipe_storage import PipeStorage
+
+pipe = PipeStorage(base_url=os.environ["PIPE_BASE_URL"])
+
+wallet_public_key = "Base58WalletPubkey..."
+challenge = pipe.auth_challenge(wallet_public_key)
+signature_b64 = sign_with_wallet(challenge.message)
+session = pipe.auth_verify(
+    wallet_public_key,
+    challenge.nonce,
+    challenge.message,
+    signature_b64,
+)
+
+# Optional: fetch the long-lived user_app_key only if you want API-key mode later.
+me = requests.get(
+    f"{os.environ['PIPE_BASE_URL']}/user/me",
+    headers={"Authorization": f"Bearer {session.access_token}"},
+).json()
+
+print("user_app_key =", me["user_app_key"])
 ```
 
 ## Agent x402 top-up
@@ -78,11 +136,7 @@ import os
 
 from pipe_storage import PipeStorage
 
-pipe = PipeStorage(
-    api_key=os.environ["PIPE_API_KEY"],
-    account=os.environ["PIPE_ACCOUNT"],
-    auth_scheme="api_key",
-)
+pipe = PipeStorage()
 
 result = pipe.top_up_credits_x402(
     1_000_000,
@@ -111,7 +165,11 @@ Low-level methods are also available if you want to control the loop yourself:
 ```python
 from pipe_storage import PipeStorage
 
-pipe = PipeStorage()
+pipe = PipeStorage(
+    api_key=os.environ["PIPE_API_KEY"],
+    account=os.environ["PIPE_ACCOUNT"],
+    auth_scheme="api_key",
+)
 
 stored = pipe.store({"hello": "world"}, file_name="agent/state.json")
 pinned = pipe.pin({"operation_id": stored["operation_id"]})
